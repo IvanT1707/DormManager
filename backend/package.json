@@ -1,0 +1,35 @@
+{
+  "name": "dormmanager-backend",
+  "version": "0.6.0",
+  "description": "REST API foundation for the DormManager student dormitory management system.",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "nodemon src/index.js",
+    "start": "node src/index.js",
+    "start:render": "node scripts/migrate.js && node src/index.js",
+    "migrate": "node scripts/migrate.js",
+    "migrate:baseline": "node scripts/migrate.js --baseline",
+    "check": "node --check src/index.js && node --check src/config/env.js && node --check src/config/database.js && node --check src/config/firebase.js && node --check src/constants/roles.js && node --check src/middleware/auth.js && node --check src/middleware/error-handler.js && node --check src/utils/validation.js && node --check src/utils/controller-helpers.js && node --check src/jobs/payment-reminder.job.js && node --check src/services/dorm-scope.service.js && node --check src/services/notification.service.js && node --check src/services/billing.service.js && node --check src/services/reminder.service.js && node --check src/controllers/auth.controller.js && node --check src/controllers/dorm.controller.js && node --check src/controllers/room.controller.js && node --check src/controllers/user.controller.js && node --check src/controllers/service.controller.js && node --check src/controllers/residence.controller.js && node --check src/controllers/application.controller.js && node --check src/controllers/transaction.controller.js && node --check src/controllers/notification.controller.js && node --check src/controllers/billing.controller.js && node --check src/controllers/internet.controller.js && node --check src/controllers/disciplinary.controller.js && node --check src/controllers/staff-dorm.controller.js && node --check src/routes/auth.routes.js && node --check src/routes/health.routes.js && node --check src/routes/dorm.routes.js && node --check src/routes/room.routes.js && node --check src/routes/user.routes.js && node --check src/routes/service.routes.js && node --check src/routes/residence.routes.js && node --check src/routes/application.routes.js && node --check src/routes/transaction.routes.js && node --check src/routes/notification.routes.js && node --check src/routes/billing.routes.js && node --check src/routes/internet.routes.js && node --check src/routes/disciplinary.routes.js && node --check src/routes/staff-dorm.routes.js && node --check scripts/migrate.js && node --check scripts/smoke-crud.js",
+    "smoke": "node scripts/smoke-crud.js"
+  },
+  "keywords": [
+    "dormitory",
+    "express",
+    "postgresql",
+    "swagger"
+  ],
+  "license": "UNLICENSED",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0",
+    "firebase-admin": "^13.10.0",
+    "helmet": "^8.1.0",
+    "pg": "^8.16.0",
+    "swagger-ui-express": "^5.0.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  }
+}

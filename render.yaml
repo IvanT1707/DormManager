@@ -1,0 +1,51 @@
+databases:
+  - name: dormmanager-db-tsekot-oi35
+    plan: free
+    region: frankfurt
+    databaseName: dormmanager
+    postgresMajorVersion: "18"
+
+services:
+  - type: web
+    name: dormmanager-tsekot-oi35
+    runtime: node
+    plan: free
+    region: frankfurt
+    buildCommand: npm --prefix backend ci && npm --prefix frontend ci && npm --prefix frontend run build
+    startCommand: npm --prefix backend run start:render
+    healthCheckPath: /api/health/database
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SERVE_FRONTEND
+        value: "true"
+      - key: VITE_API_URL
+        value: /api
+      - key: DATABASE_URL
+        fromDatabase:
+          name: dormmanager-db-tsekot-oi35
+          property: connectionString
+      - key: DB_SSL
+        value: "false"
+      - key: API_BASE_URL
+        value: https://dormmanager-tsekot-oi35.onrender.com
+      - key: CORS_ORIGIN
+        value: https://dormmanager-tsekot-oi35.onrender.com
+      - key: FIREBASE_PROJECT_ID
+        sync: false
+      - key: FIREBASE_CLIENT_EMAIL
+        sync: false
+      - key: FIREBASE_PRIVATE_KEY
+        sync: false
+      - key: VITE_FIREBASE_API_KEY
+        sync: false
+      - key: VITE_FIREBASE_AUTH_DOMAIN
+        sync: false
+      - key: VITE_FIREBASE_PROJECT_ID
+        sync: false
+      - key: VITE_FIREBASE_STORAGE_BUCKET
+        sync: false
+      - key: VITE_FIREBASE_MESSAGING_SENDER_ID
+        sync: false
+      - key: VITE_FIREBASE_APP_ID
+        sync: false
