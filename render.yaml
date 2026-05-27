@@ -11,7 +11,7 @@ services:
     runtime: node
     plan: free
     region: frankfurt
-    buildCommand: npm --prefix backend ci && npm --prefix frontend ci && npm --prefix frontend run build
+    buildCommand: npm --prefix backend ci && npm --prefix frontend ci --include=dev && npm --prefix frontend run build
     startCommand: npm --prefix backend run start:render
     healthCheckPath: /api/health/database
     envVars:
