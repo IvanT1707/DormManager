@@ -242,6 +242,15 @@ const applicationFields = {
   status: { type: 'string', enum: applicationStatuses },
   description: { type: 'string', nullable: true },
   resolutionNote: { type: 'string', nullable: true },
+  disciplinaryBasis: {
+    type: 'array',
+    items: {
+      type: 'object',
+      properties: { disciplinaryRecordId: id },
+    },
+    default: [],
+    readOnly: true,
+  },
   eligibilityVerified: { type: 'boolean', default: false },
   documentsVerified: { type: 'boolean', default: false },
   paymentVerified: { type: 'boolean', default: false },
@@ -545,9 +554,11 @@ export const swaggerDocument = {
       },
       patch: {
         tags: ['Discipline'],
-        summary: 'Update active disciplinary point thresholds (administrator only)',
+        summary: 'Return fixed disciplinary point thresholds',
+        description:
+          'The implementation keeps the maximum active point policy fixed at 35 points. Administrators manage the rule catalog instead.',
         requestBody: jsonBody('DisciplinaryPolicyUpdate'),
-        responses: { 200: jsonResponse(schemaRef('DisciplinaryPolicy'), 'Policy updated.'), ...errorResponses() },
+        responses: { 200: jsonResponse(schemaRef('DisciplinaryPolicy'), 'Fixed policy returned.'), ...errorResponses() },
       },
     },
     '/api/disciplinary-records': {

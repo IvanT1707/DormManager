@@ -11,7 +11,6 @@ import {
   readEnum,
   readForeignId,
   readId,
-  readPositiveInteger,
   readString,
   requireJsonObject,
 } from '../utils/validation.js';
@@ -22,8 +21,14 @@ const COLUMNS =
   'record.id, record.residence_id AS "residenceId", residence.user_id AS "userId", residence.room_id AS "roomId", room.dorm_id AS "dormId", record.issued_by AS "issuedBy", record.record_type AS "recordType", record.status, record.incident_date AS "incidentDate", record.violation_rule_id AS "violationRuleId", rule.code AS "ruleCode", rule.title AS "ruleTitle", record.rule_reference AS "ruleReference", record.penalty_points AS "penaltyPoints", record.description, record.resolution_note AS "resolutionNote", record.resolved_by AS "resolvedBy", record.resolved_at AS "resolvedAt", record.created_at AS "createdAt", record.updated_at AS "updatedAt", COALESCE((SELECT SUM(active_record.penalty_points)::integer FROM disciplinary_record AS active_record JOIN residence AS active_residence ON active_residence.id = active_record.residence_id WHERE active_residence.user_id = residence.user_id AND active_record.status = \'active\'), 0) AS "studentActivePoints"';
 const RULE_COLUMNS =
   'rule.id, rule.code, rule.title, rule.record_type AS "recordType", rule.rule_reference AS "ruleReference", rule.default_points AS "defaultPoints", rule.active, rule.created_at AS "createdAt", rule.updated_at AS "updatedAt"';
-const POLICY_COLUMNS =
-  'id, title, no_renewal_threshold AS "noRenewalThreshold", eviction_threshold AS "evictionThreshold", max_active_points AS "maxActivePoints", active, created_at AS "createdAt", updated_at AS "updatedAt"';
+const DISCIPLINARY_POLICY = Object.freeze({
+  id: 1,
+  title: 'Чинна політика дисциплінарного обліку',
+  noRenewalThreshold: 25,
+  evictionThreshold: 35,
+  maxActivePoints: 35,
+  active: true,
+});
 
 function readPoints(body, key, { required = false } = {}) {
   if (!hasField(body, key)) {
@@ -49,11 +54,8 @@ function assertRulePoints(recordType, points) {
   }
 }
 
-async function getActivePolicy(client = pool) {
-  return rowOrNotFound(
-    await client.query(`SELECT ${POLICY_COLUMNS} FROM disciplinary_policy WHERE active = TRUE LIMIT 1`),
-    'Active disciplinary policy',
-  );
+async function getActivePolicy() {
+  return DISCIPLINARY_POLICY;
 }
 
 async function getActivePointTotal(userId, client = pool) {
@@ -136,24 +138,7 @@ export async function getDisciplinaryPolicy(_request, response) {
   response.json(await getActivePolicy());
 }
 
-export async function updateDisciplinaryPolicy(request, response) {
-  requireJsonObject(request.body);
-  const policy = await getActivePolicy();
-  const title = readString(request.body, 'title', { maxLength: 160 }) ?? policy.title;
-  const noRenewalThreshold =
-    readPositiveInteger(request.body, 'noRenewalThreshold') ?? policy.noRenewalThreshold;
-  const evictionThreshold =
-    readPositiveInteger(request.body, 'evictionThreshold') ?? policy.evictionThreshold;
-  if (noRenewalThreshold > 35 || evictionThreshold > 35 || noRenewalThreshold > evictionThreshold) {
-    throw new HttpError(400, 'Policy thresholds must be ordered values between 1 and 35.');
-  }
-  await pool.query(
-    `UPDATE disciplinary_policy
-     SET title = $1, no_renewal_threshold = $2, eviction_threshold = $3,
-         updated_at = CURRENT_TIMESTAMP
-     WHERE id = $4`,
-    [title, noRenewalThreshold, evictionThreshold, policy.id],
-  );
+export async function updateDisciplinaryPolicy(_request, response) {
   response.json(await getActivePolicy());
 }
 

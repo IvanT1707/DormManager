@@ -19,7 +19,7 @@ const STATUSES = ['pending', 'in_review', 'waiting_materials', 'approved', 'reje
 const REPAIR_CATEGORIES = ['general', 'electrical', 'plumbing'];
 const COMMENT_VISIBILITIES = ['public', 'staff'];
 const COLUMNS =
-  'id, user_id AS "userId", room_id AS "roomId", assigned_room_id AS "assignedRoomId", managed_dorm_id AS "managedDormId", application_type AS "applicationType", repair_category AS "repairCategory", status, description, resolution_note AS "resolutionNote", eligibility_verified AS "eligibilityVerified", documents_verified AS "documentsVerified", payment_verified AS "paymentVerified", medical_clearance_verified AS "medicalClearanceVerified", safety_briefing_completed AS "safetyBriefingCompleted", pass_issued AS "passIssued", housing_conditions_confirmed AS "housingConditionsConfirmed", processed_by AS "processedBy", processed_at AS "processedAt", created_at AS "createdAt", updated_at AS "updatedAt"';
+  'id, user_id AS "userId", room_id AS "roomId", assigned_room_id AS "assignedRoomId", managed_dorm_id AS "managedDormId", application_type AS "applicationType", repair_category AS "repairCategory", status, description, resolution_note AS "resolutionNote", disciplinary_basis AS "disciplinaryBasis", eligibility_verified AS "eligibilityVerified", documents_verified AS "documentsVerified", payment_verified AS "paymentVerified", medical_clearance_verified AS "medicalClearanceVerified", safety_briefing_completed AS "safetyBriefingCompleted", pass_issued AS "passIssued", housing_conditions_confirmed AS "housingConditionsConfirmed", processed_by AS "processedBy", processed_at AS "processedAt", created_at AS "createdAt", updated_at AS "updatedAt"';
 const HOUSING_TYPES = ['settlement', 'renewal', 'eviction', 'relocation'];
 const COMMENT_COLUMNS =
   'comment.id, comment.application_id AS "applicationId", comment.author_id AS "authorId", comment.message, comment.visibility, comment.created_at AS "createdAt", author.full_name AS "authorName", author.role AS "authorRole"';
@@ -486,14 +486,6 @@ export async function updateApplication(request, response) {
           client,
         );
       }
-      await client.query('DELETE FROM eviction_disciplinary_basis WHERE application_id = $1', [id]);
-      for (const recordId of disciplinaryRecordIds) {
-        await client.query(
-          `INSERT INTO eviction_disciplinary_basis (application_id, disciplinary_record_id)
-           VALUES ($1, $2)`,
-          [id, recordId],
-        );
-      }
     }
     const fields = {
       assignedRoomId: readForeignId(request.body, 'assignedRoomId', { nullable: true }),
@@ -504,6 +496,10 @@ export async function updateApplication(request, response) {
       status,
       description: readString(request.body, 'description', { nullable: true, allowEmpty: true }),
       resolutionNote: readString(request.body, 'resolutionNote', { nullable: true, allowEmpty: true }),
+      disciplinaryBasis:
+        disciplinaryRecordIds === undefined
+          ? undefined
+          : disciplinaryRecordIds.map((recordId) => ({ disciplinaryRecordId: recordId })),
       eligibilityVerified: readBoolean(request.body, 'eligibilityVerified'),
       documentsVerified: readBoolean(request.body, 'documentsVerified'),
       paymentVerified: readBoolean(request.body, 'paymentVerified'),
@@ -552,6 +548,7 @@ export async function updateApplication(request, response) {
         status: 'status',
         description: 'description',
         resolutionNote: 'resolution_note',
+        disciplinaryBasis: 'disciplinary_basis',
         eligibilityVerified: 'eligibility_verified',
         documentsVerified: 'documents_verified',
         paymentVerified: 'payment_verified',

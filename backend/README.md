@@ -60,6 +60,7 @@ backend/
 |-- database/migrations/011_automatic_billing_cycles.sql
 |-- database/migrations/012_maintenance_workflow.sql
 |-- database/migrations/013_disciplinary_points_policy.sql
+|-- database/migrations/014_simplify_support_tables.sql
 |-- scripts/migrate.js
 |-- src/
 |   |-- config/database.js
@@ -110,6 +111,7 @@ psql -d dormmanager -f database/migrations/010_room_naming_layout_mode.sql
 psql -d dormmanager -f database/migrations/011_automatic_billing_cycles.sql
 psql -d dormmanager -f database/migrations/012_maintenance_workflow.sql
 psql -d dormmanager -f database/migrations/013_disciplinary_points_policy.sql
+psql -d dormmanager -f database/migrations/014_simplify_support_tables.sql
 ```
 
 If those migrations were already applied manually to an existing local
@@ -136,7 +138,7 @@ npm --prefix backend run start:render
 It applies pending migrations before starting the API. Firebase Admin
 credentials must be entered in Render as `FIREBASE_PROJECT_ID`,
 `FIREBASE_CLIENT_EMAIL`, and `FIREBASE_PRIVATE_KEY`; never commit the service
-account JSON file. See `../docs/RENDER_DEPLOYMENT.md` for the complete setup.
+account JSON file.
 
 ## Firebase Setup
 

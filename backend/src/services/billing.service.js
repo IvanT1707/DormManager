@@ -70,12 +70,12 @@ export async function generateCharges({ serviceId, periodStart, periodEnd, dueDa
         `INSERT INTO billing_charge
            (service_id, subject_type, room_id, responsible_user_id,
             period_start, period_end, due_date, amount)
-         SELECT $1, 'room', subscription.room_id, MIN(residence.user_id), $2, $3, $4, $5
-         FROM room_internet_subscription AS subscription
+         SELECT $1, 'room', room.id, MIN(residence.user_id), $2, $3, $4, $5
+         FROM room
          JOIN residence
-           ON residence.room_id = subscription.room_id AND residence.status = 'active'
-         WHERE subscription.service_id = $1 AND subscription.status IN ('active', 'suspended')
-         GROUP BY subscription.room_id
+           ON residence.room_id = room.id AND residence.status = 'active'
+         WHERE room.internet_service_id = $1 AND room.internet_status IN ('active', 'suspended')
+         GROUP BY room.id
          ON CONFLICT DO NOTHING
          RETURNING ${CHARGE_COLUMNS}`,
         [serviceId, periodStart, periodEnd, dueDate, service.price],
@@ -146,14 +146,22 @@ export async function runAutomaticBilling(businessDate = kyivBillingDate()) {
   );
 
   await pool.query(
-    `INSERT INTO billing_job_run
-       (job_name, business_date, internet_created_count, accommodation_created_count)
-     VALUES ('automatic-billing', $1, $2, $3)
+    `INSERT INTO job_run (job_name, business_date, payload)
+     VALUES (
+       'automatic-billing',
+       $1,
+       jsonb_build_object(
+         'internetCreatedCount', $2::integer,
+         'accommodationCreatedCount', $3::integer
+       )
+     )
      ON CONFLICT (job_name, business_date) DO UPDATE SET
-       internet_created_count =
-         billing_job_run.internet_created_count + EXCLUDED.internet_created_count,
-       accommodation_created_count =
-         billing_job_run.accommodation_created_count + EXCLUDED.accommodation_created_count,
+       payload = jsonb_build_object(
+         'internetCreatedCount',
+         COALESCE((job_run.payload->>'internetCreatedCount')::integer, 0) + $2::integer,
+         'accommodationCreatedCount',
+         COALESCE((job_run.payload->>'accommodationCreatedCount')::integer, 0) + $3::integer
+       ),
        completed_at = CURRENT_TIMESTAMP`,
     [businessDate, internetCreated.length, accommodationCreated.length],
   );

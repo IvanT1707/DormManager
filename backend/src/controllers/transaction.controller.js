@@ -185,13 +185,13 @@ export async function completeSimulatedPayment(request, response) {
       );
       if (charge.serviceCode === 'INTERNET' && charge.roomId) {
         const activation = await client.query(
-          `UPDATE room_internet_subscription
-           SET status = 'active',
-               activated_at = COALESCE(activated_at, CURRENT_DATE),
-               suspended_at = NULL,
+          `UPDATE room
+           SET internet_status = 'active',
+               internet_activated_at = COALESCE(internet_activated_at, CURRENT_DATE),
+               internet_suspended_at = NULL,
                updated_at = CURRENT_TIMESTAMP
-           WHERE room_id = $1 AND status IN ('active', 'suspended')
-           RETURNING room_id AS "roomId"`,
+           WHERE id = $1 AND internet_status IN ('active', 'suspended')
+           RETURNING id AS "roomId"`,
           [charge.roomId],
         );
         activatedInternetRoomId = activation.rows[0]?.roomId ?? null;

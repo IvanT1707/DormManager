@@ -12,7 +12,7 @@ export async function generatePaymentReminders(businessDate = kyivBusinessDate()
   try {
     await client.query('BEGIN');
     const run = await client.query(
-      `INSERT INTO notification_job_run (job_name, business_date)
+      `INSERT INTO job_run (job_name, business_date)
        VALUES ('payment-reminders', $1)
        ON CONFLICT (job_name, business_date) DO UPDATE
        SET completed_at = CURRENT_TIMESTAMP
@@ -68,7 +68,13 @@ export async function generatePaymentReminders(businessDate = kyivBusinessDate()
     }
 
     await client.query(
-      `UPDATE notification_job_run SET generated_count = generated_count + $1 WHERE id = $2`,
+      `UPDATE job_run
+       SET payload = jsonb_build_object(
+             'generatedCount',
+             COALESCE((payload->>'generatedCount')::integer, 0) + $1::integer
+           ),
+           completed_at = CURRENT_TIMESTAMP
+       WHERE id = $2`,
       [notifications.length, run.rows[0].id],
     );
     await client.query('COMMIT');

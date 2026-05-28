@@ -9,11 +9,11 @@ import { readDate, readEnum, readForeignId, readId, requireJsonObject } from '..
 const SUBSCRIPTION_STATUSES = ['inactive', 'active', 'suspended'];
 const INTERNET_SELECT =
   `room.id AS "roomId", room.dorm_id AS "dormId",
-   subscription.service_id AS "serviceId", subscription.status AS "subscriptionStatus",
-   subscription.activated_at AS "activatedAt", subscription.suspended_at AS "suspendedAt",
+   room.internet_service_id AS "serviceId", room.internet_status AS "subscriptionStatus",
+   room.internet_activated_at AS "activatedAt", room.internet_suspended_at AS "suspendedAt",
    CASE
-     WHEN subscription.room_id IS NULL OR subscription.status = 'inactive' THEN 'not_connected'
-     WHEN subscription.status = 'suspended' THEN 'suspended'
+     WHEN room.internet_service_id IS NULL OR room.internet_status = 'inactive' THEN 'not_connected'
+     WHEN room.internet_status = 'suspended' THEN 'suspended'
      WHEN EXISTS (
        SELECT 1 FROM billing_charge AS charge
        JOIN service ON service.id = charge.service_id
@@ -51,7 +51,6 @@ export async function listInternetStatuses(request, response) {
   const result = await pool.query(
     `SELECT ${INTERNET_SELECT}
      FROM room
-     LEFT JOIN room_internet_subscription AS subscription ON subscription.room_id = room.id
      ${whereClause(filters)}
      ORDER BY room.dorm_id, room.room_number`,
     values,
@@ -70,7 +69,6 @@ export async function getInternetStatus(request, response) {
   const result = await pool.query(
     `SELECT ${INTERNET_SELECT}
      FROM room
-     LEFT JOIN room_internet_subscription AS subscription ON subscription.room_id = room.id
      WHERE ${shiftedFilters.join(' AND ')}`,
     values,
   );
@@ -94,18 +92,18 @@ export async function updateInternetStatus(request, response) {
   }
 
   const result = await pool.query(
-    `INSERT INTO room_internet_subscription
-       (room_id, service_id, status, activated_at, suspended_at, updated_by)
-     VALUES ($1, $2, $3, $4, $5, $6)
-     ON CONFLICT (room_id) DO UPDATE SET
-       service_id = EXCLUDED.service_id,
-       status = EXCLUDED.status,
-       activated_at = EXCLUDED.activated_at,
-       suspended_at = EXCLUDED.suspended_at,
-       updated_by = EXCLUDED.updated_by,
-       updated_at = CURRENT_TIMESTAMP
-     RETURNING room_id AS "roomId", service_id AS "serviceId", status AS "subscriptionStatus",
-               activated_at AS "activatedAt", suspended_at AS "suspendedAt"`,
+    `UPDATE room
+     SET internet_service_id = $2,
+         internet_status = $3::room_service_status,
+         internet_activated_at = $4,
+         internet_suspended_at = $5,
+         internet_updated_by = $6,
+         updated_at = CURRENT_TIMESTAMP
+     WHERE id = $1
+     RETURNING id AS "roomId", internet_service_id AS "serviceId",
+               internet_status AS "subscriptionStatus",
+               internet_activated_at AS "activatedAt",
+               internet_suspended_at AS "suspendedAt"`,
     [roomId, serviceId, status, activatedAt ?? null, suspendedAt ?? null, request.user.id],
   );
 

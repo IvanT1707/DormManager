@@ -486,12 +486,14 @@ try {
       disciplinaryRecordIds: [disciplinaryRecord.id],
     }),
   });
-  const attachedBasis = await pool.query(
-    `SELECT 1 FROM eviction_disciplinary_basis
-     WHERE application_id = $1 AND disciplinary_record_id = $2`,
-    [disciplinaryEviction.id, disciplinaryRecord.id],
-  );
-  if (attachedBasis.rowCount !== 1) {
+  const updatedEviction = await request(`/api/applications/${disciplinaryEviction.id}`, {
+    token: tokens.commandant,
+  });
+  if (
+    !updatedEviction.disciplinaryBasis?.some(
+      (basis) => String(basis.disciplinaryRecordId) === String(disciplinaryRecord.id),
+    )
+  ) {
     throw new Error('Eviction application did not retain its disciplinary ground.');
   }
 
@@ -1009,7 +1011,16 @@ try {
   await request(`/api/services/${service.id}`, { method: 'DELETE' }, 204);
   delete created.service;
   if (created.internetService) {
-    await pool.query('DELETE FROM room_internet_subscription WHERE room_id = $1', [room.id]);
+    await pool.query(
+      `UPDATE room
+       SET internet_service_id = NULL,
+           internet_status = 'inactive',
+           internet_activated_at = NULL,
+           internet_suspended_at = NULL,
+           internet_updated_by = NULL
+       WHERE id = $1`,
+      [room.id],
+    );
     await request(`/api/services/${created.internetService}`, { method: 'DELETE' }, 204);
     delete created.internetService;
   }
@@ -1037,9 +1048,16 @@ try {
   console.log('Auth/RBAC smoke test passed: accounts, layouts, residence workflow, permissions, CRUD, and cleanup.');
 } finally {
   if (created.internetSubscriptionRoom) {
-    await pool.query('DELETE FROM room_internet_subscription WHERE room_id = $1', [
-      created.internetSubscriptionRoom,
-    ]);
+    await pool.query(
+      `UPDATE room
+       SET internet_service_id = NULL,
+           internet_status = 'inactive',
+           internet_activated_at = NULL,
+           internet_suspended_at = NULL,
+           internet_updated_by = NULL
+       WHERE id = $1`,
+      [created.internetSubscriptionRoom],
+    );
   }
   const cleanup = [
     ['transactions', created.internetPayment],

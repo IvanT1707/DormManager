@@ -347,11 +347,6 @@ export function CommandantDashboard() {
   const [assignmentForm, setAssignmentForm] = useState(emptyAssignmentForm);
   const [assignmentFilters, setAssignmentFilters] = useState(emptyAssignmentFilters);
   const [disciplineForm, setDisciplineForm] = useState(emptyDisciplineForm);
-  const [disciplinaryPolicyForm, setDisciplinaryPolicyForm] = useState({
-    title: '',
-    noRenewalThreshold: 25,
-    evictionThreshold: 35,
-  });
   const [ruleForm, setRuleForm] = useState(emptyRuleForm);
   const [billingPeriodForm, setBillingPeriodForm] = useState(emptyBillingPeriodForm);
   const [reportFilters, setReportFilters] = useState(emptyReportFilters);
@@ -434,11 +429,6 @@ export function CommandantDashboard() {
           || disciplinaryRules.find((rule) => rule.active)?.id
           || '',
       }));
-      setDisciplinaryPolicyForm({
-        title: disciplinaryPolicy.title,
-        noRenewalThreshold: disciplinaryPolicy.noRenewalThreshold,
-        evictionThreshold: disciplinaryPolicy.evictionThreshold,
-      });
       setRoomForm((current) => ({ ...current, dormId: current.dormId || dorms[0]?.id || '' }));
     } catch (nextError) {
       setError(nextError.message);
@@ -812,22 +802,6 @@ export function CommandantDashboard() {
         body: { active: !rule.active },
       });
     }, rule.active ? 'Правило архівовано.' : 'Правило відновлено.');
-  }
-
-  async function saveDisciplinaryPolicy(event) {
-    event.preventDefault();
-    await perform(async () => {
-      const token = await getToken();
-      await apiRequest('/disciplinary-records/policy', {
-        method: 'PATCH',
-        token,
-        body: {
-          ...disciplinaryPolicyForm,
-          noRenewalThreshold: Number(disciplinaryPolicyForm.noRenewalThreshold),
-          evictionThreshold: Number(disciplinaryPolicyForm.evictionThreshold),
-        },
-      });
-    }, 'Пороги дисциплінарної політики оновлено.');
   }
 
   async function createAssignment(event) {
@@ -1688,58 +1662,11 @@ export function CommandantDashboard() {
             {profile.role === 'administrator' ? (
               <>
                 <hr className="section-divider" />
-                <h3>Політика балів</h3>
-                <form className="form-stack" onSubmit={saveDisciplinaryPolicy}>
-                  <label>
-                    Назва політики
-                    <input
-                      onChange={(event) =>
-                        setDisciplinaryPolicyForm((current) => ({ ...current, title: event.target.value }))
-                      }
-                      required
-                      value={disciplinaryPolicyForm.title}
-                    />
-                  </label>
-                  <div className="discipline-thresholds">
-                    <label>
-                      Непродовження від
-                      <input
-                        max="35"
-                        min="1"
-                        onChange={(event) =>
-                          setDisciplinaryPolicyForm((current) => ({
-                            ...current,
-                            noRenewalThreshold: event.target.value,
-                          }))
-                        }
-                        required
-                        type="number"
-                        value={disciplinaryPolicyForm.noRenewalThreshold}
-                      />
-                    </label>
-                    <label>
-                      Виселення від
-                      <input
-                        max="35"
-                        min="1"
-                        onChange={(event) =>
-                          setDisciplinaryPolicyForm((current) => ({
-                            ...current,
-                            evictionThreshold: event.target.value,
-                          }))
-                        }
-                        required
-                        type="number"
-                        value={disciplinaryPolicyForm.evictionThreshold}
-                      />
-                    </label>
-                  </div>
-                  <button className="button button-secondary" disabled={Boolean(pending)} type="submit">
-                    Зберегти політику
-                  </button>
-                </form>
-                <hr className="section-divider" />
                 <h3>Нове правило</h3>
+                <p className="muted">
+                  Максимум дисциплінарного обліку зафіксовано на рівні 35 балів.
+                  Адміністратор може змінювати довідник правил, але не базовий ліміт.
+                </p>
                 <form className="form-stack" onSubmit={createDisciplinaryRule}>
                   <label>
                     Код правила
