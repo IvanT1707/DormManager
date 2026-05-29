@@ -2799,7 +2799,7 @@ function ApplicationDecision({
           <div className="decision-checks">
             <label><input checked={form.eligibilityVerified} name="eligibilityVerified" onChange={updateField} type="checkbox" /> Право на поселення підтверджено</label>
             <label><input checked={form.documentsVerified} name="documentsVerified" onChange={updateField} type="checkbox" /> Документи отримано</label>
-            <label><input checked={form.paymentVerified} name="paymentVerified" onChange={updateField} type="checkbox" /> Оплату підтверджено</label>
+            <label><input checked={form.paymentVerified} name="paymentVerified" onChange={updateField} type="checkbox" /> Фінансові умови перевірено</label>
             <label><input checked={form.medicalClearanceVerified} name="medicalClearanceVerified" onChange={updateField} type="checkbox" /> Медичну довідку отримано</label>
             <label><input checked={form.safetyBriefingCompleted} name="safetyBriefingCompleted" onChange={updateField} type="checkbox" /> Інструктаж проведено</label>
             <label><input checked={form.passIssued} name="passIssued" onChange={updateField} type="checkbox" /> Перепустку видано</label>

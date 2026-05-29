@@ -1,5 +1,6 @@
 import { pool } from '../config/database.js';
 import { ROLES } from '../constants/roles.js';
+import { createSettlementCharges, kyivBillingDate } from '../services/billing.service.js';
 import { addAssignedDormFilter, assertCanManageDorm } from '../services/dorm-scope.service.js';
 import { createNotification } from '../services/notification.service.js';
 import { addFilter, rowOrNotFound, updateStatement, whereClause } from '../utils/controller-helpers.js';
@@ -116,7 +117,7 @@ function requireChecked(application, fields, message) {
 
 async function completeHousingWorkflow(client, application) {
   const currentResidence = await activeResidenceForUser(client, application.userId);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = kyivBillingDate();
 
   if (application.applicationType === 'settlement') {
     if (currentResidence) {
@@ -130,7 +131,6 @@ async function completeHousingWorkflow(client, application) {
       [
         'eligibilityVerified',
         'documentsVerified',
-        'paymentVerified',
         'medicalClearanceVerified',
         'safetyBriefingCompleted',
         'passIssued',
@@ -138,11 +138,18 @@ async function completeHousingWorkflow(client, application) {
       'Settlement verification steps must be completed before residence is created.',
     );
     await assertAvailableCapacity(client, application.assignedRoomId);
-    await client.query(
+    const residence = await client.query(
       `INSERT INTO residence (user_id, room_id, start_date, status)
-       VALUES ($1, $2, $3, 'active')`,
+       VALUES ($1, $2, $3, 'active')
+       RETURNING id`,
       [application.userId, application.assignedRoomId, today],
     );
+    await createSettlementCharges(client, {
+      residenceId: residence.rows[0].id,
+      roomId: application.assignedRoomId,
+      userId: application.userId,
+      businessDate: today,
+    });
   }
 
   if (application.applicationType === 'renewal') {

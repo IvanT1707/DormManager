@@ -25,6 +25,141 @@ function monthlyPeriod(businessDate, dueDay) {
   };
 }
 
+function fallbackSemesterPeriod(businessDate) {
+  const [year, month] = businessDate.split('-').map(Number);
+
+  if (month >= 9) {
+    return {
+      periodStart: `${year}-09-01`,
+      periodEnd: `${year + 1}-01-31`,
+      dueDate: businessDate,
+    };
+  }
+
+  if (month >= 7) {
+    return {
+      periodStart: `${year}-07-01`,
+      periodEnd: `${year}-08-31`,
+      dueDate: businessDate,
+    };
+  }
+
+  if (month >= 2) {
+    return {
+      periodStart: `${year}-02-01`,
+      periodEnd: `${year}-06-30`,
+      dueDate: businessDate,
+    };
+  }
+
+  return {
+    periodStart: `${year - 1}-09-01`,
+    periodEnd: `${year}-01-31`,
+    dueDate: businessDate,
+  };
+}
+
+async function currentAccommodationPeriod(client, serviceId, businessDate) {
+  const result = await client.query(
+    `SELECT period_start AS "periodStart", period_end AS "periodEnd", due_date AS "dueDate"
+     FROM accommodation_billing_period
+     WHERE service_id = $1
+       AND active = TRUE
+       AND charge_date <= $2
+       AND period_end >= $2
+     ORDER BY period_start DESC
+     LIMIT 1`,
+    [serviceId, businessDate],
+  );
+
+  return result.rows[0] ?? fallbackSemesterPeriod(businessDate);
+}
+
+export async function createSettlementCharges(
+  client,
+  { residenceId, roomId, userId, businessDate = kyivBillingDate() },
+) {
+  const services = await client.query(
+    `SELECT id, service_code AS "serviceCode", payment_due_day AS "paymentDueDay",
+            price::float8 AS price
+     FROM service
+     WHERE active = TRUE AND service_code IN ('ACCOMMODATION', 'INTERNET')`,
+  );
+  const created = {
+    accommodationCharge: null,
+    internetCharge: null,
+  };
+
+  const accommodationService = services.rows.find(
+    (service) => service.serviceCode === 'ACCOMMODATION',
+  );
+  if (accommodationService) {
+    const period = await currentAccommodationPeriod(client, accommodationService.id, businessDate);
+    const result = await client.query(
+      `INSERT INTO billing_charge
+         (service_id, subject_type, residence_id, responsible_user_id,
+          period_start, period_end, due_date, amount)
+       VALUES ($1, 'residence', $2, $3, $4, $5, $6, $7)
+       ON CONFLICT DO NOTHING
+       RETURNING ${CHARGE_COLUMNS}`,
+      [
+        accommodationService.id,
+        residenceId,
+        userId,
+        period.periodStart,
+        period.periodEnd,
+        period.dueDate,
+        accommodationService.price,
+      ],
+    );
+    created.accommodationCharge = result.rows[0] ?? null;
+  }
+
+  const internetService = services.rows.find((service) => service.serviceCode === 'INTERNET');
+  if (internetService) {
+    const period = monthlyPeriod(businessDate, internetService.paymentDueDay ?? 10);
+    await client.query(
+      `UPDATE room
+       SET internet_service_id = $2,
+           internet_status = CASE
+             WHEN internet_status = 'suspended' THEN internet_status
+             ELSE 'active'::room_service_status
+           END,
+           internet_activated_at = CASE
+             WHEN internet_status IN ('active', 'suspended') THEN internet_activated_at
+             ELSE NULL
+           END,
+           internet_suspended_at = CASE
+             WHEN internet_status = 'suspended' THEN internet_suspended_at
+             ELSE NULL
+           END,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $1`,
+      [roomId, internetService.id],
+    );
+    const result = await client.query(
+      `INSERT INTO billing_charge
+         (service_id, subject_type, room_id, responsible_user_id,
+          period_start, period_end, due_date, amount)
+       VALUES ($1, 'room', $2, $3, $4, $5, $6, $7)
+       ON CONFLICT DO NOTHING
+       RETURNING ${CHARGE_COLUMNS}`,
+      [
+        internetService.id,
+        roomId,
+        userId,
+        period.periodStart,
+        period.periodEnd,
+        period.dueDate,
+        internetService.price,
+      ],
+    );
+    created.internetCharge = result.rows[0] ?? null;
+  }
+
+  return created;
+}
+
 export async function generateCharges({ serviceId, periodStart, periodEnd, dueDate }) {
   const client = await pool.connect();
 
